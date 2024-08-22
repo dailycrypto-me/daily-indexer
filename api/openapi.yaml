@@ -1,0 +1,809 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Daily Indexer
+  description: >-
+    The Daily Indexer saves all PBFT Blocks, DAG Blocks and Transactions on the
+    Daily chain and exposes an API on top of that data that can be used on the
+    Daily Explorer
+  contact:
+    name: Daily Team
+    email: contact@daily.io
+    url: https://daily.io
+  license:
+    name: MIT
+    url: https://mit-license.org/
+servers:
+  - url: https://indexer.mainnet.daily.io
+    description: Mainnet network
+  - url: https://indexer.testnet.daily.io
+    description: Testnet network
+  - url: https://indexer.devnet.daily.io
+    description: Devnet network
+paths:
+  /holders:
+    get:
+      tags:
+        - Holders
+      summary: "Returns the list of DLY token holders and their balances"
+      description: |
+        Returns the list of DLY token holders and their balances
+      operationId: "getHolders"
+      parameters:
+        - $ref: "#/components/parameters/paginationParam"
+      responses:
+        "200":
+          description: |
+            Currentlist of DLY token holders and their balances as a string- string pair as values could be pretty big
+          content:
+            application/json:
+              schema:
+                properties:
+                  holders:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/HoldersPaginatedResponse"
+        default:
+          description: |
+            Unexpected error
+  /totalSupply:
+    get:
+      tags:
+        - TotalSupply
+      summary: "Returns total supply"
+      description: |
+        Returns total supply
+      operationId: "getTotalSupply"
+      responses:
+        "200":
+          description: |
+            Current total supply as string as value could be pretty big
+          content:
+            application/json:
+              schema:
+                properties:
+                  currentSupply:
+                    type: string
+                    example: "1234567890"
+        default:
+          description: |
+            Unexpected error
+  /totalYield:
+    get:
+      tags:
+        - totalYield
+      summary: "Returns total yield"
+      description: |
+        Returns stored total yield value closest to specified block number
+      operationId: "getTotalYield"
+      parameters:
+        - $ref: "#/components/parameters/blockNumParam"
+      responses:
+        "200":
+          description: |
+            Current total yield as string as value could be pretty big
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/YieldResponse"
+        default:
+          description: |
+            Unexpected error
+  /validators:
+    get:
+      tags:
+        - Validators
+      summary: "Returns all validators"
+      description: |
+        Returns all validators for the selected week and the number of PBFT blocks they produced
+      operationId: "getValidators"
+      parameters:
+        - $ref: "#/components/parameters/weekParam"
+        - $ref: "#/components/parameters/paginationParam"
+      responses:
+        "200":
+          description: |
+            A JSON array of validators
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ValidatorsPaginatedResponse"
+        default:
+          description: |
+            Unexpected error
+  /validators/total:
+    get:
+      tags:
+        - Validators
+      summary: "Returns total number of PBFT blocks"
+      description: |
+        Returns total number of PBFT blocks produced in selected week
+      operationId: "getValidatorsTotal"
+      parameters:
+        - $ref: "#/components/parameters/weekParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing the total number of PBFT blocks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResponse"
+        default:
+          description: |
+            Unexpected error
+  /validators/{address}:
+    get:
+      tags:
+        - Validators
+      summary: "Returns info about the validator"
+      description: |
+        Returns info about the validator for the selected week
+      operationId: "getValidator"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - $ref: "#/components/parameters/weekParam"
+      responses:
+        "200":
+          description: |
+            A JSON object with info about validator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Validator"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/stats:
+    get:
+      tags:
+        - Address
+      summary: "Returns stats for the address"
+      description: |
+        Returns total number of PBFT blocks, DAG blocks and Transactions produced for the selected address
+      operationId: "getAddressStats"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing the total number of PBFT blocks produced for the selected address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/transactions:
+    get:
+      tags:
+        - Address
+      summary: "Returns all transactions"
+      description: |
+        Returns all transactions from and to the selected address
+      operationId: "getAddressTransactions"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - $ref: "#/components/parameters/paginationParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing a list of all of the transactions for the selected address
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/TransactionsPaginatedResponse"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/dags:
+    get:
+      tags:
+        - Address
+      summary: "Returns all DAG blocks"
+      description: |
+        Returns all DAG blocks sent by the selected address
+      operationId: "getAddressDags"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - $ref: "#/components/parameters/paginationParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing a list of all of the DAG blocks sent from the selected address
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/DagsPaginatedResponse"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/pbfts:
+    get:
+      tags:
+        - Address
+      summary: "Returns all PBFT blocks"
+      description: |
+        Returns all PBFT blocks produced by the selected address
+      operationId: "getAddressPbfts"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - $ref: "#/components/parameters/paginationParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing a list of all of the PBFT blocks produced by the selected address
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PbftsPaginatedResponse"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/yield:
+    get:
+      tags:
+        - Address
+      summary: "Returns yield for the address"
+      description: |
+        Returns yield for the address at specified block
+      operationId: "getAddressYield"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - $ref: "#/components/parameters/blockNumParam"
+      responses:
+        "200":
+          description: |
+            Current total yield as string as value could be pretty big
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/YieldResponse"
+        default:
+          description: |
+            Unexpected error
+  /address/{address}/yieldForInterval:
+    get:
+      tags:
+        - Address
+      summary: "Returns yield for the address"
+      description: |
+        Returns yield for the address at specified block
+      operationId: "getAddressYieldForInterval"
+      parameters:
+        - $ref: "#/components/parameters/addressParam"
+        - in: query
+          name: fromBlock
+          description: |
+            From block number
+          schema:
+            $ref: "#/components/schemas/Counter"
+        - in: query
+          name: toBlock
+          required: true
+          description: |
+            To block number
+          schema:
+            $ref: "#/components/schemas/Counter"
+      responses:
+        "200":
+          description: |
+            Current total yield as string as value could be pretty big
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/YieldResponse"
+        default:
+          description: |
+            Unexpected error
+  /transaction/{hash}:
+    get:
+      tags:
+        - Hash
+      summary: "Returns the decoded transaction"
+      description: |
+        Returns the decoded transaction with specified hash
+      operationId: "getTransaction"
+      parameters:
+        - $ref: "#/components/parameters/hashParam"
+      responses:
+        "200":
+          description: |
+            A JSON object describing a transaction with specified hash including all decoded events(if decoded). Returns 404 if transaction with specified hash has no data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Transaction"
+        default:
+          description: |
+            Unexpected error
+  /transaction/{hash}/internal_transactions:
+    get:
+      tags:
+        - Hash
+      summary: "Returns internal transactions"
+      description: |
+        Returns all internal transactions of transaction with specified hash
+      operationId: "getInternalTransactions"
+      parameters:
+        - $ref: "#/components/parameters/hashParam"
+      responses:
+        "200":
+          description: |
+            A JSON object containing a list of all internal transactions of transaction with specified hash
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/InternalTransactionsResponse"
+        default:
+          description: |
+            Unexpected error
+  /transaction/{hash}/logs:
+    get:
+      tags:
+        - Hash
+      summary: "Returns event logs of transaction"
+      description: |
+        Returns all logs of the transaction with specified hash
+      operationId: "getTransactionLogs"
+      parameters:
+        - $ref: "#/components/parameters/hashParam"
+      responses:
+        "200":
+          description: |
+            A JSON object array containing a list of all evetn lgos of the transaction with specified hash
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/TransactionLogsResponse"
+        default:
+          description: |
+            Unexpected error
+components:
+  schemas:
+    Address:
+      type: string
+      example: "0x0000000000000000000000000000000000000000"
+    Hash:
+      type: string
+      example: "0x0000000000000000000000000000000000000000000000000000000000000000"
+    Counter:
+      type: integer
+      format: uint64
+      example: 123
+    Timestamp:
+      type: integer
+      format: uint64
+      example: 1676682705
+    NilableUint64:
+      type: integer
+      format: uint64
+      nullable: true
+      example: 1676682705
+      # for optional values we should also specify extra rlp tag as below. this extras don't working with $refs
+      x-oapi-codegen-extra-tags:
+        rlp: "nil"
+    Week:
+      type: object
+      properties:
+        week:
+          type: integer
+          format: int32
+          minimum: 1
+          default: 1
+          nullable: true
+        year:
+          type: integer
+          format: int32
+          minimum: 2022
+          default: 2023
+          nullable: true
+    CallData:
+      type: object
+      x-oapi-codegen-extra-tags:
+        rlp: "nil"
+      required:
+        - name
+        - params
+      properties:
+        name:
+          type: string
+          example: "delegate(address)"
+        params:
+          type: array
+          x-go-type: "any"
+          items:
+            type: string
+    Account:
+      type: object
+      required:
+        - address
+        - balance
+      properties:
+        address:
+          $ref: "#/components/schemas/Address"
+        balance:
+          type: string
+          example: "0"
+    Period:
+      type: object
+      required:
+        - startDate
+        - endDate
+        - hasNext
+      properties:
+        startDate:
+          $ref: "#/components/schemas/Timestamp"
+        endDate:
+          $ref: "#/components/schemas/Timestamp"
+        hasNext:
+          type: boolean
+          default: true
+    Validator:
+      type: object
+      required:
+        - rank
+        - address
+        - pbftCount
+        - yield
+      optional:
+        - registrationBlock
+      properties:
+        rank:
+          type: integer
+          format: uint64
+          example: 1
+          x-oapi-codegen-extra-tags:
+            rlp: "-"
+        address:
+          $ref: "#/components/schemas/Address"
+        pbftCount:
+          $ref: "#/components/schemas/Counter"
+        yield:
+          type: string
+          example: "0,1999"
+          x-oapi-codegen-extra-tags:
+            rlp: "-"
+            json: "yield,omitempty"
+        registrationBlock:
+          type: integer
+          format: uint64
+          nullable: true
+          example: 1676682705
+          # for optional values we should also specify extra rlp tag as below. this extras don't working with $refs
+          x-oapi-codegen-extra-tags:
+            rlp: "-"
+            json: "registrationBlock,omitempty"
+    EventLog:
+      type: object
+      required:
+        - logIndex
+        - address
+        - data
+        - name
+        - params
+        - topics
+        - removed
+        - transactionHash
+        - transactionIndex
+      properties:
+        logIndex:
+          $ref: "#/components/schemas/Counter"
+        address:
+          $ref: "#/components/schemas/Address"
+        topics:
+          type: array
+          items:
+            type: string
+        data:
+          type: string
+        name:
+          type: string
+        params:
+          type: array
+          x-go-type: "any"
+          items:
+            type: string
+        removed:
+          type: boolean
+        transactionHash:
+          $ref: "#/components/schemas/Hash"
+        transactionIndex:
+          $ref: "#/components/schemas/Counter"
+    Transaction:
+      type: object
+      required:
+        - hash
+        - blockNumber
+        - from
+        - to
+        - value
+        - gasCost
+        - timestamp
+        - status
+        - type
+        - input
+      optional:
+        - calldata
+      properties:
+        hash:
+          $ref: "#/components/schemas/Hash"
+        blockNumber:
+          $ref: "#/components/schemas/Counter"
+        calldata:
+          $ref: "#/components/schemas/CallData"
+        input:
+          type: string
+        from:
+          $ref: "#/components/schemas/Address"
+        to:
+          $ref: "#/components/schemas/Address"
+        value:
+          type: string
+          example: "0"
+        gasCost:
+          $ref: "#/components/schemas/Counter"
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        status:
+          type: boolean
+          example: true
+        type:
+          type: integer
+          format: uint8
+          enum: [0, 1, 2, 3, 4, 5]
+          x-enum-varnames:
+            [
+              transfer,
+              contract_call,
+              contract_creation,
+              internal_transfer,
+              internal_contract_call,
+              internal_contract_creation,
+            ]
+    Dag:
+      type: object
+      required:
+        - hash
+        - level
+        - transactionCount
+        - timestamp
+      properties:
+        hash:
+          $ref: "#/components/schemas/Hash"
+        level:
+          $ref: "#/components/schemas/Counter"
+        transactionCount:
+          $ref: "#/components/schemas/Counter"
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+    Pbft:
+      type: object
+      required:
+        - author
+        - hash
+        - number
+        - transactionCount
+        - timestamp
+      properties:
+        author:
+          $ref: "#/components/schemas/Address"
+        hash:
+          $ref: "#/components/schemas/Hash"
+        number:
+          $ref: "#/components/schemas/Counter"
+        transactionCount:
+          $ref: "#/components/schemas/Counter"
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+    WeekResponse:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Week"
+        - $ref: "#/components/schemas/Period"
+    CountResponse:
+      type: object
+      required:
+        - total
+      properties:
+        total:
+          $ref: "#/components/schemas/Counter"
+    StatsResponse:
+      type: object
+      required:
+        - pbftCount
+        - dagsCount
+        - transactionsCount
+        - lastPbftTimestamp
+        - lastDagTimestamp
+        - lastTransactionTimestamp
+        - validatorRegisteredBlock
+      properties:
+        pbftCount:
+          $ref: "#/components/schemas/Counter"
+        dagsCount:
+          $ref: "#/components/schemas/Counter"
+        transactionsCount:
+          $ref: "#/components/schemas/Counter"
+        lastPbftTimestamp:
+          $ref: "#/components/schemas/NilableUint64"
+        lastDagTimestamp:
+          $ref: "#/components/schemas/NilableUint64"
+        lastTransactionTimestamp:
+          $ref: "#/components/schemas/NilableUint64"
+        validatorRegisteredBlock:
+          $ref: "#/components/schemas/NilableUint64"
+    PaginatedResponse:
+      type: object
+      required:
+        - total
+        - start
+        - end
+        - hasNext
+      properties:
+        total:
+          $ref: "#/components/schemas/Counter"
+        start:
+          $ref: "#/components/schemas/Counter"
+        end:
+          $ref: "#/components/schemas/Counter"
+        hasNext:
+          type: boolean
+          default: true
+    HoldersPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Account"
+    ValidatorsPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Validator"
+        week:
+          $ref: "#/components/schemas/WeekResponse"
+    TransactionsPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Transaction"
+    DagsPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Dag"
+    PbftsPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Pbft"
+    YieldResponse:
+      required:
+        - yield
+        - fromBlock
+        - toBlock
+      properties:
+        yield:
+          type: string
+          example: "0,1999"
+        fromBlock:
+          $ref: "#/components/schemas/Counter"
+        toBlock:
+          $ref: "#/components/schemas/Counter"
+    InternalTransactionsResponse:
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Transaction"
+    TransactionLogsResponse:
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/EventLog"
+    AddressFilter:
+      $ref: "#/components/schemas/Address"
+    PaginationFilter:
+      type: object
+      required:
+        - limit
+      properties:
+        start:
+          type: integer
+          format: uint64
+          default: 0
+          nullable: true
+        limit:
+          type: integer
+          format: uint64
+          minimum: 1
+          maximum: 100
+          default: 30
+  parameters:
+    addressParam:
+      name: address
+      in: path
+      description: |
+        Address to filter by
+      required: true
+      schema:
+        $ref: "#/components/schemas/AddressFilter"
+    paginationParam:
+      name: pagination
+      in: query
+      required: true
+      description: |
+        Pagination
+      schema:
+        $ref: "#/components/schemas/PaginationFilter"
+    weekParam:
+      name: week
+      in: query
+      required: false
+      description: |
+        Week to filter by
+      schema:
+        $ref: "#/components/schemas/Week"
+    hashParam:
+      name: hash
+      in: path
+      required: true
+      description: |
+        Hash of the item(transaction) to get data for
+      schema:
+        $ref: "#/components/schemas/Hash"
+    blockNumParam:
+      name: blockNumber
+      in: query
+      required: false
+      description: |
+        Block Number
+      schema:
+        $ref: "#/components/schemas/Counter"
+    addressesParam:
+      name: addresses
+      in: query
+      required: true
+      description: |
+        Addresses
+      schema:
+        $ref: "#/components/schemas/Address"

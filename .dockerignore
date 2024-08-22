@@ -1,0 +1,11 @@
+.github/
+bin/
+.dockerignore
+.editorconfig
+.gitattributes
+.gitignore
+.git
+Dockerfile
+LICENSE
+README.md
+daily-indexer
