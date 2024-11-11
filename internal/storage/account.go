@@ -8,6 +8,8 @@ import (
 	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/events"
 	"github.com/dailycrypto-me/daily-indexer/models"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Account struct {
@@ -73,6 +75,10 @@ func (a *Accounts) AddToBalance(address string, value *big.Int) {
 	account.Balance.Add(account.Balance, value)
 	if account.Balance.Cmp(big.NewInt(0)) == 0 {
 		a.RemoveBalance(address)
+	}
+	if account.Balance.Cmp(big.NewInt(0)) == -1 {
+		log.WithField("address", address).WithField("balance", account.Balance.String()).Error("Account balance is negative")
+		account.Balance = big.NewInt(0)
 	}
 }
 
