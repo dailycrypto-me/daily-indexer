@@ -8,17 +8,17 @@ info:
     Daily Explorer
   contact:
     name: Daily Team
-    email: contact@dailycrypto.me
-    url: https://dailycrypto.me
+    email: contact@dailycrypto.net
+    url: https://dailycrypto.net
   license:
     name: MIT
     url: https://mit-license.org/
 servers:
-  - url: https://indexer.mainnet.dailycrypto.me
+  - url: https://indexer.mainnet.dailycrypto.net
     description: Mainnet network
-  - url: https://indexer.testnet.dailycrypto.me
+  - url: https://indexer.testnet.dailycrypto.net
     description: Testnet network
-  - url: https://indexer.devnet.dailycrypto.me
+  - url: https://indexer.devnet.dailycrypto.net
     description: Devnet network
 paths:
   /holders:
