@@ -26,7 +26,7 @@ type blockContext struct {
 }
 
 func MakeBlockContext(s storage.Storage, client chain.Client, config *common.Config) *blockContext {
-	var bc blockContext
+	bc := new(blockContext)
 	bc.Storage = s
 	bc.Batch = s.NewBatch()
 	bc.Config = config
@@ -35,7 +35,7 @@ func MakeBlockContext(s storage.Storage, client chain.Client, config *common.Con
 	bc.finalized = s.GetFinalizationData()
 	bc.Client = client
 
-	return &bc
+	return bc
 }
 
 func (bc *blockContext) SetBlockData(bd *chain.BlockData) {
@@ -50,7 +50,7 @@ func (bc *blockContext) commit() {
 	metrics.StorageCommitCounter.Inc()
 }
 
-func (bc *blockContext) process(bd *chain.BlockData) (dags_count, trx_count uint64, err error) {
+func (bc *blockContext) process(bd *chain.BlockData, stats *chain.Stats) (dags_count, trx_count uint64, err error) {
 	if (bc.finalized.PbftCount + 1) != bd.Pbft.Number {
 		err = fmt.Errorf("block number mismatch: %d != %d", bc.finalized.PbftCount+1, bd.Pbft.Number)
 		return
@@ -89,14 +89,16 @@ func (bc *blockContext) process(bd *chain.BlockData) (dags_count, trx_count uint
 	bc.Batch.SaveAccounts(bc.accounts)
 
 	dags_count = uint64(len(bc.Block.Dags))
-	trx_count = bc.Block.Pbft.TransactionCount
+	trx_count = uint64(len(bc.Block.Transactions))
 	bc.finalized.TrxCount += trx_count
 	bc.finalized.DagCount += dags_count
 	bc.finalized.PbftCount++
 
 	pbft_author_index := bc.addressStats.GetAddress(bc.Storage, bc.Block.Pbft.Author).AddPbft(bc.Block.Pbft.Timestamp)
 	log.WithFields(log.Fields{"author": bc.Block.Pbft.Author, "hash": bc.Block.Pbft.Hash}).Debug("Saving PBFT block")
-	bc.Batch.AddToBatch(bc.Block.Pbft.GetModel(), bc.Block.Pbft.Author, pbft_author_index)
+	pbft_model := bc.Block.Pbft.GetModel()
+	bc.Batch.Add(pbft_model, bc.Block.Pbft.Author, pbft_author_index)
+	stats.AddPbft(pbft_model)
 
 	bc.commit()
 	r.AfterCommit()
@@ -144,5 +146,5 @@ func (bc *blockContext) processDags() (err error) {
 func (bc *blockContext) saveDag(dag *chain.DagBlock) {
 	log.WithFields(log.Fields{"sender": dag.Sender, "hash": dag.Hash}).Trace("Saving DAG block")
 	dag_index := bc.addressStats.GetAddress(bc.Storage, dag.Sender).AddDag(dag.GetModel().Timestamp)
-	bc.Batch.AddToBatch(dag.GetModel(), dag.Sender, dag_index)
+	bc.Batch.Add(dag.GetModel(), dag.Sender, dag_index)
 }

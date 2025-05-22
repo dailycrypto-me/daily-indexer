@@ -6,7 +6,6 @@ import (
 	"github.com/dailycrypto-me/daily-indexer/internal/chain"
 	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/storage"
-	"github.com/dailycrypto-me/daily-indexer/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,7 +26,7 @@ func MakeGenesis(s storage.Storage, c chain.Client, gen_obj chain.GenesisObject,
 	return &genesis
 }
 
-func (g *Genesis) makeInitBalanceTrx(addr, value string) (trx models.Transaction) {
+func (g *Genesis) makeInitBalanceTrx(addr string, value *big.Int) (trx storage.Transaction) {
 	trx.Hash = "GENESIS_" + addr
 	trx.From = "GENESIS"
 	trx.To = addr
@@ -42,9 +41,9 @@ func (g *Genesis) process() {
 	genesisSupply := big.NewInt(0)
 	accounts := g.storage.GetAccounts()
 	for addr, value := range g.genesis.InitialBalances {
+		value := common.ParseStringToBigInt(value)
 		trx := g.makeInitBalanceTrx(addr, value)
-		g.bc.SaveTransaction(trx)
-		value := common.ParseStringToBigInt(trx.Value)
+		g.bc.SaveTransaction(trx, false)
 		genesisSupply.Add(genesisSupply, value)
 		accounts.AddToBalance(trx.To, value)
 	}

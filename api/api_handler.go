@@ -1,4 +1,4 @@
-//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config=server.cfg.yaml openapi.yaml
+//go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=server.cfg.yaml openapi.yaml
 
 package api
 
@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dailycrypto-me/daily-indexer/internal/chain"
 	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/storage"
 	"github.com/dailycrypto-me/daily-indexer/internal/storage/pebble"
+	"github.com/dailycrypto-me/daily-indexer/internal/transaction"
 	. "github.com/dailycrypto-me/daily-indexer/models"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/labstack/echo/v4"
@@ -22,10 +24,11 @@ import (
 type ApiHandler struct {
 	storage storage.Storage
 	config  *common.Config
+	stats   *chain.Stats
 }
 
-func NewApiHandler(s storage.Storage, c *common.Config) *ApiHandler {
-	return &ApiHandler{s, c}
+func NewApiHandler(s storage.Storage, c *common.Config, stats *chain.Stats) *ApiHandler {
+	return &ApiHandler{s, c, stats}
 }
 
 func GetAddressDataPage[T storage.Paginated](a *ApiHandler, address AddressFilter, pag *PaginationParam) interface{} {
@@ -59,6 +62,14 @@ func GetHoldersDataPage(a *ApiHandler, pag *PaginationParam) interface{} {
 	return response
 }
 
+func (a *ApiHandler) GetChainStats(ctx echo.Context) error {
+	stats := a.stats.GetStats()
+	if stats == nil {
+		return ctx.JSON(http.StatusNotFound, "Chain stats not found")
+	}
+	return ctx.JSON(http.StatusOK, *stats)
+}
+
 func (a *ApiHandler) GetTransaction(ctx echo.Context, hash string) error {
 	txHash := strings.ToLower(hash)
 
@@ -67,7 +78,7 @@ func (a *ApiHandler) GetTransaction(ctx echo.Context, hash string) error {
 		return ctx.JSON(http.StatusNotFound, "Transaction not found")
 	}
 
-	err := common.ProcessTransaction(&tx)
+	err := transaction.DecodeTransaction(&tx)
 	if err != nil {
 		log.WithError(err).WithField("hash", hash).Error("Error processing transaction")
 	}
@@ -87,7 +98,7 @@ func (a *ApiHandler) GetAddressPbfts(ctx echo.Context, address AddressFilter, pa
 
 // GetAddressTransactions returns all transactions from and to the selected address
 func (a *ApiHandler) GetAddressTransactions(ctx echo.Context, address AddressFilter, params GetAddressTransactionsParams) error {
-	return ctx.JSON(http.StatusOK, GetAddressDataPage[Transaction](a, address, &params.Pagination))
+	return ctx.JSON(http.StatusOK, GetAddressDataPage[storage.Transaction](a, address, &params.Pagination))
 }
 
 // GetAddressPbftTotal returns total number of PBFT blocks produced for the selected address

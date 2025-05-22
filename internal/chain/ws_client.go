@@ -7,6 +7,7 @@ import (
 
 	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/metrics"
+	"github.com/gorilla/websocket"
 
 	"github.com/dailycrypto-me/daily-indexer/internal/storage"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -23,17 +24,19 @@ type WsClient struct {
 // NewWsClient creates a new instance of the WsClient struct.
 func NewWsClient(url string) (*WsClient, error) {
 	ctx := context.Background()
-	ws, err := rpc.DialOptions(ctx, url, rpc.WithWebsocketMessageSizeLimit(0))
+	options := []rpc.ClientOption{
+		rpc.WithWebsocketMessageSizeLimit(0),
+		rpc.WithWebsocketDialer(websocket.Dialer{
+			EnableCompression: true,
+		}),
+	}
+	ws, err := rpc.DialOptions(ctx, url, options...)
 
 	if err != nil {
 		return nil, err
 	}
 	client := &WsClient{rpc: ws, ctx: ctx}
 	client.GetChainId()
-
-	if err != nil {
-		log.WithError(err).Fatal("Can't create dpos client")
-	}
 
 	return client, nil
 }
@@ -185,7 +188,7 @@ func (client *WsClient) GetTotalSupply(block_num uint64) (totalSupply *big.Int, 
 
 func (client *WsClient) SubscribeNewHeads() (chan Block, *rpc.ClientSubscription, error) {
 	ch := make(chan Block)
-	sub, err := client.rpc.Subscribe(client.ctx, "eth", ch, "newHeads")
+	sub, err := client.rpc.Subscribe(client.ctx, "eth", ch, "newHeads", true)
 	metrics.RpcCallsCounter.Inc()
 	return ch, sub, err
 }

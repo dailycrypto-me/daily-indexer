@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/dailycrypto-me/daily-indexer/internal/chain"
+	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/storage"
 	"github.com/dailycrypto-me/daily-indexer/models"
 	"github.com/stretchr/testify/assert"
@@ -115,11 +116,11 @@ func TestTraceInternalCreationParsing(t *testing.T) {
 		assert.Equal(t, internal.Hash, trx.Hash)
 		assert.Equal(t, internal.From, trace.Action.From)
 		assert.Equal(t, internal.To, trace.Result.Address)
-		assert.Equal(t, internal.Value, trace.Action.Value)
+		assert.Equal(t, internal.Value, common.ParseStringToBigInt(trace.Action.Value))
 	}
 
 	for addr, count := range addr_trx_count {
-		res, _ := storage.GetObjectsPage[models.Transaction](bc.Storage, addr, 0, 20)
+		res, _ := storage.GetObjectsPage[storage.Transaction](bc.Storage, addr, 0, 20)
 		assert.Equal(t, len(res), count, addr)
 	}
 }

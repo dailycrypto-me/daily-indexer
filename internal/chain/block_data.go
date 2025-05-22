@@ -1,14 +1,11 @@
 package chain
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/spiretechnology/go-pool"
 )
-
-var ErrFutureBlock = errors.New("Block is in the future")
 
 type BlockData struct {
 	Pbft                 *Block
@@ -40,7 +37,11 @@ func scheduleBlockDataTasks(tp pool.Pool, c Client, period uint64, bd *BlockData
 	tp.Go(common.MakeTaskWithResult(c.GetPreviousBlockCertVotes, period, &bd.Votes, err).Run)
 	tp.Go(common.MakeTaskWithResult(c.GetValidatorsAtBlock, period, &bd.Validators, err).Run)
 	tp.Go(common.MakeTaskWithResult(c.GetTotalAmountDelegated, period, &bd.TotalAmountDelegated, err).Run)
-	tp.Go(common.MakeTaskWithResult(c.GetTotalSupply, period, &bd.TotalSupply, err).Run)
+	supplyPeriod := period
+	if period >= 100 {
+		supplyPeriod = period - 100
+	}
+	tp.Go(common.MakeTaskWithResult(c.GetTotalSupply, supplyPeriod, &bd.TotalSupply, err).Run)
 }
 
 func GetBlockData(c Client, period uint64) (bd *BlockData, err error) {
@@ -52,9 +53,6 @@ func GetBlockData(c Client, period uint64) (bd *BlockData, err error) {
 
 	tp.Wait()
 
-	if bd.Pbft == nil {
-		return nil, ErrFutureBlock
-	}
 	if err != nil {
 		return nil, err
 	}

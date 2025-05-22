@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/dailycrypto-me/daily-indexer/internal/common"
 	"github.com/dailycrypto-me/daily-indexer/internal/storage"
+	"github.com/dailycrypto-me/daily-indexer/internal/transaction"
 	"github.com/dailycrypto-me/daily-indexer/models"
 	"github.com/nleeper/goment"
 	"github.com/stretchr/testify/assert"
@@ -150,9 +150,9 @@ func TestBatch(t *testing.T) {
 	addr := storage.MakeEmptyAddressStats("test")
 	batch := st.NewBatch()
 
-	batch.AddToBatch(addr, addr.Address, 0)
+	batch.Add(addr, addr.Address, 0)
 	addr1 := storage.MakeEmptyAddressStats("test1")
-	batch.AddToBatch(addr1, addr1.Address, 0)
+	batch.Add(addr1, addr1.Address, 0)
 	batch.CommitBatch()
 
 	ret := st.GetAddressStats("test")
@@ -197,20 +197,20 @@ func TestTxByHash(t *testing.T) {
 	st := NewStorage("")
 	defer st.Close()
 
-	tx := models.Transaction{
+	tx := storage.Transaction{
 		Hash:  "0x111111",
 		From:  "0x222222",
-		Value: "100",
+		Value: big.NewInt(100),
 		To:    "0x00000000000000000000000000000000000000fe",
 		Input: "0x5c19a95c000000000000000000000000ed4d5f4f3641cbc056e466d15dbe2403e38056f8",
 	}
 
 	batch := st.NewBatch()
-	batch.AddToBatchSingleKey(tx, tx.Hash)
+	batch.AddSingleKey(tx, tx.Hash)
 	batch.CommitBatch()
 
 	ret := st.GetTransactionByHash(tx.Hash)
-	err := common.ProcessTransaction(&ret)
+	err := transaction.DecodeTransaction(&ret)
 
 	assert.NoError(t, err)
 	assert.Equal(t, tx.Hash, ret.Hash)

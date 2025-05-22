@@ -15,10 +15,11 @@ type Indexer struct {
 	config                      *common.Config
 	retry_time                  time.Duration
 	consistency_check_available bool
+	stats                       *chain.Stats
 }
 
-func MakeAndRun(url string, s storage.Storage, c *common.Config) {
-	i := NewIndexer(url, s, c)
+func MakeAndRun(url string, s storage.Storage, c *common.Config, stats *chain.Stats) {
+	i := NewIndexer(url, s, c, stats)
 	for {
 		err := i.run()
 		f := i.storage.GetFinalizationData()
@@ -27,11 +28,13 @@ func MakeAndRun(url string, s storage.Storage, c *common.Config) {
 	}
 }
 
-func NewIndexer(url string, s storage.Storage, c *common.Config) (i *Indexer) {
+func NewIndexer(url string, s storage.Storage, c *common.Config, stats *chain.Stats) (i *Indexer) {
 	i = new(Indexer)
 	i.retry_time = 5 * time.Second
 	i.storage = s
 	i.config = c
+	i.stats = stats
+
 	// connect is retrying to connect every retry_time
 	i.connect(url)
 	return
@@ -97,19 +100,14 @@ func (i *Indexer) init() {
 
 }
 
-func (i *Indexer) sync() error {
+func (i *Indexer) sync(start, end uint64) error {
 	// start processing blocks from the next one
-	start := i.storage.GetFinalizationData().PbftCount + 1
-	end, p_err := i.client.GetLatestPeriod()
-	if p_err != nil {
-		return p_err
-	}
 	if start >= end {
 		return nil
 	}
 	queue_limit := min(end-start, i.config.SyncQueueLimit)
 	log.WithFields(log.Fields{"start": start, "end": end, "queue_limit": queue_limit}).Info("Syncing: started")
-	sq := MakeSyncQueue(start, queue_limit, i.client)
+	sq := MakeSyncQueue(start, end, queue_limit, i.client)
 
 	go sq.Start()
 	prev := time.Now()
@@ -122,7 +120,7 @@ func (i *Indexer) sync() error {
 			continue
 		}
 		bc := MakeBlockContext(i.storage, i.client, i.config)
-		dc, tc, err := bc.process(bd)
+		dc, tc, err := bc.process(bd, i.stats)
 		if err != nil {
 			return err
 		}
@@ -138,9 +136,20 @@ func (i *Indexer) sync() error {
 }
 
 func (i *Indexer) run() error {
-	err := i.sync()
-	if err != nil {
-		return err
+	for {
+		start := i.storage.GetFinalizationData().PbftCount + 1
+		end, p_err := i.client.GetLatestPeriod()
+		if p_err != nil {
+			return p_err
+		}
+		// if the difference between the latest period and the start is less than 100 than break deep syncing and start subscribing to new blocks
+		if end-start < 100 {
+			break
+		}
+		err := i.sync(start, end)
+		if err != nil {
+			return err
+		}
 	}
 	log.Info("Syncing: finished, subscribing to new blocks")
 	ch, sub, err := i.client.SubscribeNewHeads()
@@ -155,7 +164,7 @@ func (i *Indexer) run() error {
 		case blk := <-ch:
 			finalized_period := i.storage.GetFinalizationData().PbftCount
 			if blk.Number != finalized_period+1 {
-				err := i.sync()
+				err := i.sync(finalized_period+1, blk.Number+1)
 				if err != nil {
 					return err
 				}
@@ -178,7 +187,7 @@ func (i *Indexer) run() error {
 			}
 
 			bc := MakeBlockContext(i.storage, i.client, i.config)
-			dc, tc, err := bc.process(bd)
+			dc, tc, err := bc.process(bd, i.stats)
 			if err != nil {
 				return err
 			}
